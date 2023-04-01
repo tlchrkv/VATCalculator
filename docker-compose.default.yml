@@ -1,0 +1,54 @@
+version: '3.4'
+
+x-template: &php
+    build:
+        context: .
+        dockerfile: build/php/Dockerfile
+    networks:
+        - symfony
+    depends_on:
+        - db
+    volumes:
+        - .:/opt/app:delegated
+    env_file:
+        - .env
+    platform: linux/amd64
+
+services:
+  server:
+    image: nginx:1.21-alpine
+    container_name: symfony_server
+    restart: unless-stopped
+    networks:
+      - symfony
+    depends_on:
+      - backend
+    volumes:
+      - ./:/opt/app
+      - ./build/nginx/config:/etc/nginx/conf.d
+    ports:
+      - '8080:8080'
+    platform: linux/amd64
+
+  db:
+    image: mariadb:10.5.8
+    container_name: symfony_db
+    restart: unless-stopped
+    networks:
+      - symfony
+    volumes:
+      - ./var/database:/var/lib/mysql
+    env_file:
+      - .env
+    ports:
+      - '33066:3306'
+
+  backend:
+    <<: *php
+    container_name: symfony_backend
+
+networks:
+  symfony:
+    driver: "bridge"
+    driver_opts:
+      com.docker.network.driver.mtu: 1400
